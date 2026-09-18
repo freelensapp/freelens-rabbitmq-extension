@@ -252,7 +252,10 @@ clusterDescribe("RabbitMQ cluster pages", () => {
       const metrics = frame.locator(".RmqMetrics").first();
       await metrics.waitFor({ state: "visible", timeout: 180_000 });
       expect(await frame.locator(".RmqErrorHead").count()).toBe(0);
-      expect(await frame.locator(".RmqHeader").first().textContent()).toContain("RabbitMQ");
+      // The header names the selected target and shows the Write Mode switch in its default state.
+      const header = (await frame.locator(".RmqHeader").first().textContent()) ?? "";
+      expect(header).toContain(FIXTURE_TARGET);
+      expect(header).toContain("Read-only");
     },
     5 * 60 * 1000,
   );
