@@ -232,9 +232,10 @@ clusterDescribe("RabbitMQ cluster pages", () => {
 
       const card = frame.locator(".RmqClusterCard", { hasText: FIXTURE_TARGET });
       await card.waitFor({ state: "visible", timeout: 120_000 });
-      await expect(card.locator(".RmqClusterName")).toHaveText(FIXTURE_TARGET);
+      // jest expect, not the Playwright one: read the values and assert on them.
+      expect((await card.locator(".RmqClusterName").textContent())?.trim()).toBe(FIXTURE_TARGET);
       // Credentials are resolved from the Secret referenced by the StatefulSet env.
-      await expect(card).toContainText("Secret rabbitmq-e2e-auth");
+      expect(await card.textContent()).toContain("Secret rabbitmq-e2e-auth");
     },
     5 * 60 * 1000,
   );
@@ -250,8 +251,8 @@ clusterDescribe("RabbitMQ cluster pages", () => {
       // .RmqErrorHead instead.
       const metrics = frame.locator(".RmqMetrics").first();
       await metrics.waitFor({ state: "visible", timeout: 180_000 });
-      await expect(frame.locator(".RmqErrorHead")).toHaveCount(0);
-      await expect(frame.locator(".RmqHeader")).toContainText("RabbitMQ");
+      expect(await frame.locator(".RmqErrorHead").count()).toBe(0);
+      expect(await frame.locator(".RmqHeader").first().textContent()).toContain("RabbitMQ");
     },
     5 * 60 * 1000,
   );
