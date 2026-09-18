@@ -1,0 +1,11 @@
+# Disposable RabbitMQ used by the Playwright integration tests: a plain
+# StatefulSet with the Management API exposed by a Service, no operator.
+# Discovery must surface it as `rabbitmq-e2e/rabbitmq` with credentials read
+# from the Secret referenced by RABBITMQ_DEFAULT_USER/PASS.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - secret.yaml
+  - statefulset.yaml
+  - service.yaml
