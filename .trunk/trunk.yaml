@@ -27,7 +27,9 @@ lint:
         - html
         - javascript
         - json
-        - sass
+        # sass is deliberately absent: biome 2.5.2+ no longer processes
+        # .scss files and exits with "No files were processed" when trunk
+        # passes them as explicit targets.
         - typescript
       commands:
         - output: regex
