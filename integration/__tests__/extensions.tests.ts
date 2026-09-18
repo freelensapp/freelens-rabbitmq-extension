@@ -184,6 +184,16 @@ async function launchKindClusterFromCatalog(window: Page): Promise<Frame> {
   return utils.launchKindClusterFromCatalog(TEST_KIND_CLUSTER_NAME, window);
 }
 
+// Freelens 1.10.3, the version the workflow builds, has no clickSidebarItem
+// helper: open the RabbitMQ group first when the child entry is collapsed.
+async function openRabbitmqMenuItem(frame: Frame, menuId: string): Promise<void> {
+  const item = frame.locator(`[data-testid="link-for-sidebar-item-${EXTENSION_ID}-${menuId}"]`);
+  if (!(await item.isVisible())) {
+    await frame.click(`[data-testid="link-for-sidebar-item-${EXTENSION_ID}-rabbitmq"]`);
+  }
+  await item.click();
+}
+
 clusterDescribe("RabbitMQ cluster pages", () => {
   let window: Page;
   let cleanup: undefined | (() => Promise<void>);
@@ -217,8 +227,8 @@ clusterDescribe("RabbitMQ cluster pages", () => {
   it(
     "discovers the fixture broker on the Clusters page",
     async () => {
-      console.log("await clickSidebarItem rabbitmq");
-      await utils.clickSidebarItem(frame, `link-for-sidebar-item-${EXTENSION_ID}-rabbitmq`);
+      console.log("await openRabbitmqMenuItem rabbitmq-clusters");
+      await openRabbitmqMenuItem(frame, "rabbitmq-clusters");
 
       const card = frame.locator(".RmqClusterCard", { hasText: FIXTURE_TARGET });
       await card.waitFor({ state: "visible", timeout: 120_000 });
@@ -232,8 +242,8 @@ clusterDescribe("RabbitMQ cluster pages", () => {
   it(
     "opens the Overview of the fixture broker through the port-forward",
     async () => {
-      console.log("await clickSidebarItem rabbitmq-overview");
-      await utils.clickSidebarItem(frame, `link-for-sidebar-item-${EXTENSION_ID}-rabbitmq-overview`);
+      console.log("await openRabbitmqMenuItem rabbitmq-overview");
+      await openRabbitmqMenuItem(frame, "rabbitmq-overview");
 
       // The Overview renders its metrics only after the session (credentials,
       // port-forward, Management API) is up; an error panel would render
