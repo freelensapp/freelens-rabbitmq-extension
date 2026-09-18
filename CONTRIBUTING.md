@@ -30,12 +30,26 @@ pnpm rabbitmq:up && pnpm itest && pnpm rabbitmq:down
 
 ## Pull requests
 
-1. Branch from `main`; keep PRs focused.
-2. `pnpm biome:fix` before committing; CI runs type-check, lint, knip and unit tests.
+1. Branch from `main`; keep PRs focused. Plain, descriptive PR titles and commit messages, no
+   Conventional Commits prefixes.
+2. `pnpm biome:fix` and `pnpm trunk:fix` before committing; CI runs type check, lint (biome and
+   trunk), knip, unit tests, the Playwright integration tests inside a packaged Freelens on kind,
+   and the OSV scanner.
 3. Add a line to `CHANGELOG.md`.
 4. For UI changes attach a screenshot from Freelens.
 
 ## Releasing
 
-Bump `version` in `package.json`, commit, tag `vX.Y.Z` and push the tag. The Release workflow builds, publishes
-to npm (when `NPM_TOKEN` is configured) and attaches the `.tgz` to a GitHub Release.
+Releases follow the freelensapp organization process, shared by every extension:
+
+1. A maintainer runs the **Automated npm version** workflow (`npm-version.yaml`) choosing
+   `patch`, `minor` or `major`. It opens a pull request that bumps `version` in `package.json`.
+2. The pull request is reviewed and merged.
+3. A maintainer comments `/tag` on the merged pull request: the **Automated tag** workflow
+   (`tag.yaml`) creates and pushes the `vX.Y.Z` tag.
+4. The **Release** workflow (`release.yaml`) builds the extension, publishes
+   `@freelensapp/rabbitmq-extension` to npm (Trusted Publishing with provenance, with
+   `NPM_TOKEN` as fallback) and attaches the `.tgz`, its checksum and the SBOM to a GitHub
+   Release.
+
+Do not push tags by hand and do not publish from a workstation.

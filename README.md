@@ -119,8 +119,8 @@ the window) → **Install** → enable. Rebuild + reinstall to iterate; Freelens
 
 ## Releasing
 
-See [docs/publishing.md](docs/publishing.md): version bump → `vX.Y.Z` tag → CI stages the package on npm via Trusted
-Publishing and creates the GitHub Release → a maintainer approves the staged version.
+Releases follow the freelensapp organization process (version bump pull request, `/tag` comment, Release
+workflow with npm Trusted Publishing): see [CONTRIBUTING.md](CONTRIBUTING.md#releasing).
 
 ## Repository layout
 
