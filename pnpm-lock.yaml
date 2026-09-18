@@ -25,10 +25,10 @@ importers:
         version: 17.0.93
       '@vitejs/plugin-react':
         specifier: ^6.1.1
-        version: 6.1.1(vite@8.2.2(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13))
+        version: 6.1.1(vite@8.3.0(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13))
       electron-vite:
         specifier: ^5.0.0
-        version: 5.0.0(vite@8.2.2(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13))
+        version: 5.0.0(vite@8.3.0(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13))
       encoding:
         specifier: ^0.1.13
         version: 0.1.13
@@ -51,14 +51,14 @@ importers:
         specifier: 5.9.3
         version: 5.9.3
       vite:
-        specifier: ^8.0.16
-        version: 8.2.2(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13)
+        specifier: ^8.3.0
+        version: 8.3.0(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13)
       vite-plugin-sass-dts:
         specifier: ^1.3.39
-        version: 1.3.39(postcss@8.5.28)(prettier@3.9.6)(sass-embedded@1.104.0)(vite@8.2.2(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13))
+        version: 1.3.39(postcss@8.5.28)(prettier@3.9.6)(sass-embedded@1.104.0)(vite@8.3.0(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13))
       vitest:
         specifier: ^4.1.11
-        version: 4.1.11(@types/node@24.12.4)(jsdom@26.1.0)(vite@8.2.2(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13))
+        version: 4.1.11(@types/node@24.12.4)(jsdom@26.1.0)(vite@8.3.0(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13))
 
 packages:
 
@@ -3070,13 +3070,13 @@ packages:
       '@biomejs/wasm-nodejs':
         optional: true
 
-  vite@8.2.2:
-    resolution: {integrity: sha512-cFKLV/PRgAUlIRm5WjMjJ86jrftzpqcgH+Us+DS8mI3CDNiH30Whrz8uHL3+MOLPAgqbMBAqWdAHAphOAM+z/Q==}
+  vite@8.3.0:
+    resolution: {integrity: sha512-lhZBVvEHefgE+HQZC9O7EBJgCU/nVzFNl7vkS4RE0APtWLP02/8QVIkQtzBxPquh7lq5/78NHipTj7ODQ6XuyQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
     peerDependencies:
       '@types/node': ^20.19.0 || >=22.12.0
-      '@vitejs/devtools': ^0.4.0 || ^0.5.0
+      '@vitejs/devtools': ^0.7.1
       esbuild: ^0.27.0 || ^0.28.0
       jiti: '>=1.21.0'
       less: ^4.0.0
@@ -4605,10 +4605,10 @@ snapshots:
   '@types/trusted-types@2.0.7':
     optional: true
 
-  '@vitejs/plugin-react@6.1.1(vite@8.2.2(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13))':
+  '@vitejs/plugin-react@6.1.1(vite@8.3.0(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13))':
     dependencies:
       '@rolldown/pluginutils': 1.0.1
-      vite: 8.2.2(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13)
+      vite: 8.3.0(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13)
 
   '@vitest/expect@4.1.11':
     dependencies:
@@ -4619,13 +4619,13 @@ snapshots:
       chai: 6.2.2
       tinyrainbow: 3.1.1
 
-  '@vitest/mocker@4.1.11(vite@8.2.2(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13))':
+  '@vitest/mocker@4.1.11(vite@8.3.0(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13))':
     dependencies:
       '@vitest/spy': 4.1.11
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 8.2.2(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13)
+      vite: 8.3.0(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13)
 
   '@vitest/pretty-format@4.1.11':
     dependencies:
@@ -4963,7 +4963,7 @@ snapshots:
 
   electron-to-chromium@1.5.423: {}
 
-  electron-vite@5.0.0(vite@8.2.2(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13)):
+  electron-vite@5.0.0(vite@8.3.0(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13)):
     dependencies:
       '@babel/core': 7.29.7
       '@babel/plugin-transform-arrow-functions': 7.29.7(@babel/core@7.29.7)
@@ -4971,7 +4971,7 @@ snapshots:
       esbuild: 0.25.12
       magic-string: 0.30.21
       picocolors: 1.1.1
-      vite: 8.2.2(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13)
+      vite: 8.3.0(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13)
     transitivePeerDependencies:
       - supports-color
 
@@ -6390,15 +6390,15 @@ snapshots:
 
   varint@6.0.0: {}
 
-  vite-plugin-sass-dts@1.3.39(postcss@8.5.28)(prettier@3.9.6)(sass-embedded@1.104.0)(vite@8.2.2(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13)):
+  vite-plugin-sass-dts@1.3.39(postcss@8.5.28)(prettier@3.9.6)(sass-embedded@1.104.0)(vite@8.3.0(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13)):
     dependencies:
       postcss: 8.5.28
       postcss-js: 4.1.0(postcss@8.5.28)
       prettier: 3.9.6
       sass-embedded: 1.104.0
-      vite: 8.2.2(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13)
+      vite: 8.3.0(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13)
 
-  vite@8.2.2(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13):
+  vite@8.3.0(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13):
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.7
@@ -6413,10 +6413,10 @@ snapshots:
       sass-embedded: 1.104.0
       tsx: 4.23.13
 
-  vitest@4.1.11(@types/node@24.12.4)(jsdom@26.1.0)(vite@8.2.2(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13)):
+  vitest@4.1.11(@types/node@24.12.4)(jsdom@26.1.0)(vite@8.3.0(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13)):
     dependencies:
       '@vitest/expect': 4.1.11
-      '@vitest/mocker': 4.1.11(vite@8.2.2(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13))
+      '@vitest/mocker': 4.1.11(vite@8.3.0(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13))
       '@vitest/pretty-format': 4.1.11
       '@vitest/runner': 4.1.11
       '@vitest/snapshot': 4.1.11
@@ -6433,7 +6433,7 @@ snapshots:
       tinyexec: 1.3.1
       tinyglobby: 0.2.17
       tinyrainbow: 3.1.1
-      vite: 8.2.2(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13)
+      vite: 8.3.0(@types/node@24.12.4)(esbuild@0.28.2)(sass-embedded@1.104.0)(sass@1.104.1)(tsx@4.23.13)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 24.12.4
