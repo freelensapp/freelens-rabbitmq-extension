@@ -18,5 +18,8 @@
   "typescript": {
     "config": ["tsconfig.json"]
   },
+  // The electron-vite plugin (Knip 6.35+) executes electron.vite.config.ts and trips on the
+  // ESM-only @vitejs/plugin-react; the build-only plugins stay in ignoreDependencies instead.
+  "electron-vite": false,
   "exclude": ["exports"]
 }
