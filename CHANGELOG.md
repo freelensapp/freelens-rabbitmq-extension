@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.4.0 - 2026-09-25
 
 ### Added
 
@@ -9,11 +9,17 @@
 - **Clients** tab on the Connections page: groups the connections by the workload (Deployment, StatefulSet…) or the pod that opened them, busiest first, with each client's connections, share of the total, channels, client library, traffic and the age of its oldest connection. A client that holds most of the broker's connections, such as a leaking connection pool, stands out as one row instead of thousands. Peer addresses are matched to pod IPs through the Freelens cluster connection (a pod behind a ReplicaSet is reported as its Deployment); addresses that match no pod, and loopback addresses from a service-mesh sidecar, are labelled as such. A workload row opens exactly its pods, a pod row its connections.
 - **Dead letters in the Message Inspector**: dead-letter headers (`x-death`, `x-first-death-*`) are decoded for every peeked message: the reason in plain words (rejected, expired, maxlen, delivery_limit), the queue it died in, how many times, the full history for messages that were dead-lettered more than once, and the exchange and routing key it was first published to. A summary above the messages counts them by reason and by queue, and the peeked messages can be searched (payload, routing key, properties, headers) and filtered by reason. Read-only; nothing changes on the broker.
 
+### Changed
+
+- Dependency updates via Renovate (Vite 8.3.1, sass 1.105, knip 6.38).
+
 ### Fixed
 
 - The Overview **Unroutable** rate now includes publishes the broker dropped for matching no binding, not only mandatory publishes returned to the publisher; the common non-mandatory case was shown as zero.
 - The Message Inspector no longer keeps the previous queue's peeked messages when the queue drawer switches to another queue.
 - Tables that scroll sideways (a narrow window, or zoomed in) no longer cut their rows short: the row background, borders and header now continue under every column instead of stopping at the visible edge. The growing column (Name, Client...) is measured at its minimum width, so long names do not widen the rows.
+- The queue drawer refreshes live at the same interval as the Queues table, so its message counts no longer stay stale after a purge and Ready, Unacked and the rates stay current while the drawer is open (#39, #41).
+- The cluster card shows the Management API port number instead of the named tunnel port (`15672 (management)`), and the Overview **Ready** counter is highlighted only when messages are waiting and the broker has no consumers at all (#40, #42).
 
 ## v0.3.1 - 2026-09-20
 
