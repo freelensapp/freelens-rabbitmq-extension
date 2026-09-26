@@ -21,6 +21,8 @@ import {
   type QueuesRequest,
   RABBITMQ_IPC,
   type RabbitmqProgressEvent,
+  type ReplayMessagesRequest,
+  type ReplayResultDto,
   type TargetRequest,
   type WriteModeSetRequest,
   type WriteModeStateDto,
@@ -31,6 +33,7 @@ import { activeClusterId, resolveKubeconfigFor } from "./kubeconfig-resolver";
 import { resolveClientPods } from "./rabbitmq/client-pods";
 import { discoverRabbitmq } from "./rabbitmq/discovery";
 import { createKubeForwarder } from "./rabbitmq/kube-forwarder";
+import { replayMessages } from "./rabbitmq/replay";
 import { type ProgressReporter, RabbitmqSessionManager } from "./rabbitmq/session-manager";
 
 import type { KubeReader } from "./rabbitmq/kube-reader";
@@ -192,6 +195,19 @@ export class RabbitmqIpcMain extends Main.Ipc {
         s.client.purgeQueue(request.vhost, request.queue),
       );
       return { ok: true };
+    });
+
+    // Copy replay of dead letters: gate checked before the session opens and again before publishing.
+    this.route<ReplayMessagesRequest, ReplayResultDto>(RABBITMQ_IPC.replayMessages, (request) => {
+      const assertArmed = () =>
+        this.sessions.assertWriteMode(request.clusterId, request.target.targetId, "Replaying dead-lettered messages");
+      assertArmed();
+      return this.sessions.withSession(request.clusterId, request.target, this.reporter(request.operationId), (s) =>
+        replayMessages(request.destination, request.messages, {
+          assertWriteMode: assertArmed,
+          publish: (exchange, body) => s.client.publish(request.vhost, exchange, body),
+        }),
+      );
     });
 
     this.route<DeleteQueueRequest, WriteResultDto>(RABBITMQ_IPC.deleteQueue, async (request) => {

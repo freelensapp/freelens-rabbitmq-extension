@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import { encodePathSegment } from "../../src/common/target";
 import { createJsonHttpClient } from "../../src/main/rabbitmq/http";
 import { RabbitmqManagementClient } from "../../src/main/rabbitmq/management-client";
+import { replayMessages } from "../../src/main/rabbitmq/replay";
 
 const url = new URL(process.env.RABBITMQ_URL ?? "http://127.0.0.1:15672");
 const username = process.env.RABBITMQ_USER ?? "e2e";
@@ -125,6 +126,72 @@ async function main() {
     await client.deleteQueue(vhost, queue);
     await client.deleteExchange(vhost, exchange);
     await assert.rejects(client.queueDetail(vhost, queue), (e: any) => e.code === "not-found");
+  });
+
+  await step("replay a dead letter: back to the failed queue, clean headers, no CC copy, original kept", async () => {
+    const work = `${queue}-work`;
+    const dlq = `${queue}-dlq`;
+    const audit = `${queue}-audit`;
+    const shop = `${queue}-shop`;
+    const put = (path: string, body: unknown) => http.request("PUT", path, body);
+    const qPath = (name: string) => `/api/queues/${encodePathSegment(vhost)}/${encodePathSegment(name)}`;
+    await put(qPath(dlq), { durable: true, arguments: { "x-queue-type": "quorum" } });
+    await put(qPath(work), {
+      durable: true,
+      arguments: { "x-queue-type": "quorum", "x-dead-letter-exchange": "", "x-dead-letter-routing-key": dlq },
+    });
+    await put(qPath(audit), { durable: true });
+    await put(`/api/exchanges/${encodePathSegment(vhost)}/${encodePathSegment(shop)}`, {
+      type: "direct",
+      durable: true,
+    });
+    for (const [dest, key] of [
+      [work, "order.created"],
+      [audit, "audit"],
+    ]) {
+      await http.request(
+        "POST",
+        `/api/bindings/${encodePathSegment(vhost)}/e/${encodePathSegment(shop)}/q/${encodePathSegment(dest)}`,
+        { routing_key: key },
+      );
+    }
+    // Published with CC to `audit`, then rejected in `work`: a dead letter whose x-death lists both keys.
+    await client.publish(vhost, shop, {
+      routingKey: "order.created",
+      payload: '{"order":7}',
+      payloadEncoding: "string",
+      // CC carries routing keys: `audit` is the key the audit queue is bound with.
+      properties: { delivery_mode: 2, message_id: "m-7", headers: { CC: ["audit"], tenant: "acme" } },
+    });
+    await http.request("POST", `${qPath(work)}/get`, { count: 1, ackmode: "reject_requeue_false", encoding: "auto" });
+    const peekUntil = async (name: string, n: number) => {
+      for (let i = 0; i < 40; i++) {
+        const res = await client.peekMessages(vhost, name, 10);
+        if (res.messages.length === n) return res.messages;
+        await new Promise((r) => setTimeout(r, 250));
+      }
+      throw new Error(`${name} never reached ${n} message(s)`);
+    };
+    const [dead] = await peekUntil(dlq, 1);
+
+    const result = await replayMessages("failed-queue", [{ ...dead, truncated: dead.truncated }], {
+      assertWriteMode: () => undefined,
+      publish: (ex, body) => client.publish(vhost, ex, body),
+    });
+    assert.equal(result.routed, 1);
+    const [copy] = await peekUntil(work, 1);
+    const props = copy.properties as Record<string, any>;
+    assert.equal(copy.payload, '{"order":7}');
+    assert.equal(props.message_id, "m-7");
+    assert.equal(props.delivery_mode, 2);
+    assert.equal(props.headers.tenant, "acme");
+    assert.equal(props.headers["x-death"], undefined, "x-death must not be replayed");
+    assert.equal(props.headers.CC, undefined, "CC must not be replayed to the failed queue");
+    assert.equal((await peekUntil(audit, 1)).length, 1, "audit keeps only the original CC copy");
+    assert.equal((await peekUntil(dlq, 1)).length, 1, "copy replay keeps the original");
+
+    for (const name of [work, dlq, audit]) await client.deleteQueue(vhost, name);
+    await client.deleteExchange(vhost, shop);
   });
 
   await step("bad credentials map to 'unauthorized'", async () => {

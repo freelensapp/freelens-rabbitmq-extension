@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **Replay dead letters** from the Message Inspector (Write Mode): select dead-lettered messages and publish copies either back to the queue they first failed in (default; through the default exchange, so only the consumer that failed them receives them again) or to their original exchange and routing key (every queue bound there receives a copy). The originals stay in the dead-letter queue, so nothing can be lost; replaying twice publishes duplicates. The destination is computed in the Main process from each message's own `x-death` headers, truncated payloads are refused, broker-managed headers (`x-death`, `x-first-death-*`, `x-last-death-*`, delivery counts) are removed, and CC/BCC are removed when sending back to the failed queue. A confirmation lists where each message goes, and the result reports routed, unroutable, skipped and failed messages one by one.
+
 ## v0.4.0 - 2026-09-25
 
 ### Added

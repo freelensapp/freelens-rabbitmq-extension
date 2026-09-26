@@ -2,6 +2,9 @@
  * Main ↔ Renderer IPC contract for the RabbitMQ extension.
  * Everything crossing the bridge is plain, structured-clone-safe data.
  */
+import type { ReplayDestination } from "./dead-letter";
+
+export type { ReplayDestination } from "./dead-letter";
 
 export const RABBITMQ_IPC = {
   discover: "rabbitmq:discover",
@@ -19,6 +22,7 @@ export const RABBITMQ_IPC = {
   writeModeSet: "rabbitmq:write-mode-set",
   publish: "rabbitmq:publish",
   purgeQueue: "rabbitmq:purge-queue",
+  replayMessages: "rabbitmq:replay-messages",
   deleteQueue: "rabbitmq:delete-queue",
   deleteExchange: "rabbitmq:delete-exchange",
   disconnect: "rabbitmq:disconnect",
@@ -138,6 +142,43 @@ export interface PublishRequest extends TargetRequest {
 }
 
 export interface PurgeQueueRequest extends QueueRequest {}
+
+/** One peeked dead-lettered message to replay, exactly as the Message Inspector received it. */
+export interface ReplayMessageInput {
+  /** Position in the peeked batch, echoed back in the result. */
+  index: number;
+  payload: string;
+  payloadEncoding: "string" | "base64";
+  /** Truncated payloads are refused: replaying them would publish a cut-off message. */
+  truncated: boolean;
+  properties: Record<string, unknown> | unknown[];
+}
+
+/**
+ * Copy replay: publish copies of dead-lettered messages; the originals stay in `queue` (the
+ * dead-letter queue). Main computes each destination from the message's own x-death headers.
+ */
+export interface ReplayMessagesRequest extends QueueRequest {
+  destination: ReplayDestination;
+  messages: ReplayMessageInput[];
+}
+
+export interface ReplayMessageResult {
+  index: number;
+  exchange?: string;
+  routingKey?: string;
+  /** "routed": a queue received it; "unroutable": published but no binding matched; "skipped": not published. */
+  outcome: "routed" | "unroutable" | "skipped" | "failed";
+  message?: string;
+}
+
+export interface ReplayResultDto {
+  results: ReplayMessageResult[];
+  routed: number;
+  unroutable: number;
+  skipped: number;
+  failed: number;
+}
 export interface DeleteQueueRequest extends QueueRequest {
   ifEmpty?: boolean;
   ifUnused?: boolean;
