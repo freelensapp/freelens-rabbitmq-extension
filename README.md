@@ -33,6 +33,8 @@ cluster sidebar under **RabbitMQ**: **Clusters**, **Overview**, **Health**,
 
 ![Dead letters](docs/screenshots/dead-letters.png)
 
+![Replay](docs/screenshots/replay.png)
+
 The extension is modelled on the
 [freelens-kafka-extension](https://github.com/freelensapp/freelens-kafka-extension)
 architecture, tailored for RabbitMQ.
@@ -93,7 +95,7 @@ You can also build and pack the extension yourself, see
 4. To peek at messages: open a queue, then the **Messages** tab, then
    **Peek**. Nothing is consumed.
 5. To mutate: switch **Read-only** to **Write Mode** in the header, confirm,
-   then use Purge, Delete or Publish. Write Mode resets whenever Freelens
+   then use Purge, Delete, Publish or Replay. Write Mode resets whenever Freelens
    restarts.
 
 If discovery finds the cluster but the credentials fail, the error panel
@@ -131,7 +133,10 @@ offers a username and password form.
     how many times, and the exchange and routing key it was first published
     to. A summary counts the peeked messages by reason and queue, and the
     messages can be searched (payload, routing key, headers) and filtered by
-    reason.
+    reason. In Write Mode, selected dead letters can be **replayed**: copies
+    are published back to the queue they failed in (default) or to their
+    original exchange and routing key, and the originals stay in the
+    dead-letter queue.
   - *Exchanges*: table with publish in and out rates, drawer with outgoing
     and incoming bindings and a Publish form.
   - *Connections*: live tabs for connections, channels (prefetch, unacked,
@@ -175,7 +180,13 @@ One session (tunnel and client) per target, reused across pages, closed after
 ## Limits
 
 - The write operations are publish, purge and delete of queues and
-  exchanges. Policies, users, vhosts and permissions are not managed.
+  exchanges, and replay of dead-lettered messages. Policies, users, vhosts
+  and permissions are not managed.
+- Replay publishes copies through the Management API and cannot take the
+  originals off the dead-letter queue; purge it afterwards if you want.
+  Messages larger than the 64 KiB peek limit cannot be replayed, and a
+  message whose `user_id` property names another user is refused by the
+  broker (reported per message).
 - The Management API over TLS is verified only when a CA Secret is available;
   without one the certificate of the pod is accepted inside the port-forward.
 - Brokers are reached through a port-forward to one Ready pod of the target,

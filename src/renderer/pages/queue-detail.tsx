@@ -218,8 +218,15 @@ export function QueueDetailDrawer({
                   // One inspector per queue: switching queues must not keep the previous queue's peeked messages.
                   key={`${queue.vhost}/${queue.name}`}
                   queueMessages={detail.data.queue.messages}
+                  queueName={queue.name}
+                  writeMode={writeMode}
                   peek={(count) =>
                     deps.client.messagesPeek(page.request({ vhost: queue.vhost, queue: queue.name, count }))
+                  }
+                  replay={(destination, messages) =>
+                    deps.client.replayMessages(
+                      page.request({ vhost: queue.vhost, queue: queue.name, destination, messages }),
+                    )
                   }
                 />
               ) : null}

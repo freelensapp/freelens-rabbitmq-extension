@@ -29,6 +29,8 @@ import {
   type QueuesRequest,
   RABBITMQ_IPC,
   type RabbitmqProgressEvent,
+  type ReplayMessagesRequest,
+  type ReplayResultDto,
   type TargetRequest,
   type WriteModeSetRequest,
   type WriteModeStateDto,
@@ -90,6 +92,9 @@ export class RabbitmqIpcRenderer extends Renderer.Ipc {
   }
   clientPods(request: ClientPodsRequest): Promise<ClientPodDto[]> {
     return this.invoke(RABBITMQ_IPC.clientPods, request);
+  }
+  replayMessages(request: ReplayMessagesRequest): Promise<ReplayResultDto> {
+    return this.invoke(RABBITMQ_IPC.replayMessages, request);
   }
   disconnect(request: DisconnectRequest): Promise<WriteResultDto> {
     return this.invoke(RABBITMQ_IPC.disconnect, request);

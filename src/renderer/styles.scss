@@ -412,6 +412,10 @@
     cursor: pointer;
     font-size: 12px;
     flex-wrap: wrap;
+    .RmqMessageSelect {
+      display: inline-flex;
+      align-items: center;
+    }
     .RmqMessageIdx {
       font-weight: 600;
     }

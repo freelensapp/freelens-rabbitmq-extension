@@ -36,6 +36,11 @@ discover ──▶ DiscoveredRabbitmqInfo[]      (discovery.ts; KubeReader seam)
 3. Every mutating handler calls `assertWriteMode` first; a disarmed target yields `write-mode-disabled`.
 4. Each mutating UI action confirms again with the concrete object name.
 5. `peekMessages` hard-codes `ackmode: ack_requeue_true`, caps `count` at 50, truncates payloads at 64 KiB.
+6. Replay (`replay.ts`) is copy-only: it publishes copies of dead-lettered messages and never takes
+   the originals off the dead-letter queue. Main computes each destination from the message's own
+   `x-death` headers (`planReplay` in `src/common/dead-letter.ts`), refuses truncated payloads,
+   strips broker-managed headers (`x-death*`, delivery counts) and, when sending back to the failed
+   queue, CC/BCC.
 
 ## Testing
 
