@@ -4,12 +4,11 @@ import { resolveCredentials, resolveManagementTls } from "./credentials";
 import { createJsonHttpClient } from "./http";
 import { RabbitmqManagementClient } from "./management-client";
 import { resolveManagementPod } from "./pod-resolver";
-import { openTunnel } from "./port-forward";
 
 import type { DiscoveredRabbitmqInfo, RabbitmqProgressEvent } from "../../common/ipc";
 import type { ResolvedCredentials } from "./credentials";
 import type { KubeReader } from "./kube-reader";
-import type { Forwarder, Tunnel } from "./port-forward";
+import type { PodPort, Tunnel, TunnelOpenOptions } from "./port-forward";
 
 export type ProgressReporter = (progress: Omit<RabbitmqProgressEvent, "operationId">) => void;
 
@@ -26,11 +25,19 @@ export interface RabbitmqSession {
 
 export interface SessionManagerDependencies {
   createReader(clusterId?: string): KubeReader;
-  createForwarder(clusterId?: string): Forwarder;
+  openTunnel(clusterId: string | undefined, target: PodPort, options: TunnelOpenOptions): Promise<Tunnel>;
   idleMs?: number;
   httpTimeoutMs?: number;
   now?: () => number;
 }
+
+interface PendingOpen {
+  readonly promise: Promise<RabbitmqSession>;
+  readonly controller: AbortController;
+}
+
+/** Abort reason of an open closed for new credentials: its callers get a session opened again with them. */
+const REOPEN = "reopen";
 
 export function sessionKey(clusterId: string | undefined, targetId: string): string {
   return `${clusterId ?? "active"}::${targetId}`;
@@ -44,7 +51,7 @@ export function sessionKey(clusterId: string | undefined, targetId: string): str
  */
 export class RabbitmqSessionManager {
   private readonly sessions = new Map<string, RabbitmqSession>();
-  private readonly pending = new Map<string, Promise<RabbitmqSession>>();
+  private readonly pending = new Map<string, PendingOpen>();
   private readonly manualCredentials = new Map<string, ResolvedCredentials>();
   private readonly writeMode = new Set<string>();
   private readonly idleTimers = new Map<string, NodeJS.Timeout>();
@@ -63,13 +70,13 @@ export class RabbitmqSessionManager {
   setManualCredentials(clusterId: string | undefined, targetId: string, username: string, password: string): void {
     const key = sessionKey(clusterId, targetId);
     this.manualCredentials.set(key, { username, password, source: "manual (this session)" });
-    this.close(key);
+    this.close(key, REOPEN);
   }
 
   clearManualCredentials(clusterId: string | undefined, targetId: string): void {
     const key = sessionKey(clusterId, targetId);
     this.manualCredentials.delete(key);
-    this.close(key);
+    this.close(key, REOPEN);
   }
 
   hasManualCredentials(clusterId: string | undefined, targetId: string): boolean {
@@ -135,10 +142,19 @@ export class RabbitmqSessionManager {
     const existing = this.sessions.get(key);
     if (existing) return Promise.resolve(existing);
     const inflight = this.pending.get(key);
-    if (inflight) return inflight;
-    const opening = this.open(key, clusterId, target, report).finally(() => this.pending.delete(key));
-    this.pending.set(key, opening);
-    return opening;
+    if (inflight) return inflight.promise;
+    const controller = new AbortController();
+    const promise = this.open(key, clusterId, target, report, controller.signal)
+      .catch((err: unknown) => {
+        if (controller.signal.reason === REOPEN) return this.getOrOpen(clusterId, target, report);
+        throw err;
+      })
+      .finally(() => {
+        if (this.pending.get(key) === entry) this.pending.delete(key);
+      });
+    const entry: PendingOpen = { promise, controller };
+    this.pending.set(key, entry);
+    return promise;
   }
 
   private async open(
@@ -146,23 +162,38 @@ export class RabbitmqSessionManager {
     clusterId: string | undefined,
     target: DiscoveredRabbitmqInfo,
     report: ProgressReporter,
+    signal: AbortSignal,
   ): Promise<RabbitmqSession> {
+    // Closing the session while it opens (the extension disabled, a disconnect, new credentials) aborts the open
+    // at the next step, so it never starts kubectl or stores a session after the close.
+    const stopIfClosed = () => {
+      if (signal.aborted) {
+        throw new RabbitmqError(
+          "unreachable",
+          `The connection to ${target.namespace}/${target.name} was closed while it opened.`,
+        );
+      }
+    };
     const reader = this.deps.createReader(clusterId);
 
     report({ value: 10, phase: "credentials", label: "Resolving credentials", detail: describeHint(target) });
     const credentials = this.manualCredentials.get(key) ?? (await resolveCredentials(reader, target.credentialHint));
     const tls = await resolveManagementTls(reader, target);
+    stopIfClosed();
 
     report({ value: 35, phase: "port-forward", label: "Locating a broker pod", detail: target.podSelector });
     const podPort = await resolveManagementPod(reader, target);
+    stopIfClosed();
 
-    report({
-      value: 55,
-      phase: "port-forward",
-      label: "Opening port-forward",
-      detail: `${podPort.namespace}/${podPort.pod}:${podPort.port}`,
+    const forwarding = `${podPort.namespace}/${podPort.pod}:${podPort.port}`;
+    report({ value: 55, phase: "port-forward", label: "Opening port-forward", detail: forwarding });
+    const tunnel = await this.deps.openTunnel(clusterId, podPort, {
+      signal,
+      // Preparing kubectl (the login shell, downloading the version-matched binary) can take a while.
+      onPhase: (message) => report({ value: 55, phase: "port-forward", label: "Preparing kubectl", detail: message }),
     });
-    const tunnel = await openTunnel(this.deps.createForwarder(clusterId), podPort);
+    if (signal.aborted) tunnel.close();
+    stopIfClosed();
 
     const client = new RabbitmqManagementClient(
       createJsonHttpClient({
@@ -179,9 +210,14 @@ export class RabbitmqSessionManager {
     try {
       who = await client.whoami();
     } catch (err) {
+      // kubectl reports a connection it could not forward (such as to a port the pod does not have) on its stderr.
+      const problem = err instanceof RabbitmqError && err.code === "unreachable" ? await tunnel.problem() : undefined;
       tunnel.close();
+      if (problem && err instanceof RabbitmqError) throw new RabbitmqError(err.code, `${err.message}: ${problem}`);
       throw err;
     }
+    if (signal.aborted) tunnel.close();
+    stopIfClosed();
 
     const session: RabbitmqSession = {
       key,
@@ -208,7 +244,13 @@ export class RabbitmqSessionManager {
     this.idleTimers.set(session.key, timer);
   }
 
-  close(key: string): void {
+  /** Closes the session of `key`, and stops an open of it in flight. */
+  close(key: string, reason = "closed"): void {
+    const opening = this.pending.get(key);
+    if (opening) {
+      this.pending.delete(key);
+      opening.controller.abort(reason);
+    }
     const timer = this.idleTimers.get(key);
     if (timer) clearTimeout(timer);
     this.idleTimers.delete(key);
@@ -223,7 +265,7 @@ export class RabbitmqSessionManager {
   }
 
   closeAll(): void {
-    for (const key of [...this.sessions.keys()]) this.close(key);
+    for (const key of new Set([...this.sessions.keys(), ...this.pending.keys()])) this.close(key);
     this.writeMode.clear();
     this.manualCredentials.clear();
   }

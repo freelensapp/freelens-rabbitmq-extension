@@ -1,24 +1,11 @@
 import { Renderer } from "@freelensapp/extensions";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { EXTENSION_VERSION } from "../../common/version";
-import styles from "../styles.scss?inline";
 
 import type { ReactNode } from "react";
 
 import type { DiscoveredRabbitmqInfo, RabbitmqIpcErrorShape } from "../../common/ipc";
 import type { WriteModeStore } from "../write-mode-store";
-
-const STYLE_ID = "freelens-rabbitmq-extension-styles";
-
-function ensureStyles(): void {
-  let style = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
-  if (!style) {
-    style = document.createElement("style");
-    style.id = STYLE_ID;
-    document.head.append(style);
-  }
-  if (style.textContent !== styles) style.textContent = styles;
-}
 
 // ---------------------------------------------------------------------------
 
@@ -33,7 +20,6 @@ export function PageShell({
   actions?: ReactNode;
   children: ReactNode;
 }) {
-  useEffect(() => ensureStyles(), []);
   return (
     <div className="RmqPage">
       <header className="RmqHeader">
