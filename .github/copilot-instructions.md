@@ -10,8 +10,9 @@ in the repository root. Read it first and follow it strictly, in particular:
   form, stay in Main process memory, and are never sent to the renderer,
   logged or written to disk;
 - the engine seams: `KubeReader` is the only Kubernetes read path and the
-  `Forwarder` the only write-ish path, the Management API is reached only
-  through the port-forward on `127.0.0.1`;
+  `kubectl port-forward` tunnel the only write-ish path, both through the
+  Freelens proxy, and the Management API is reached only through that tunnel
+  on `127.0.0.1`;
 - the testing requirements: unit tests for every engine change, the Docker
   engine e2e, and the Playwright integration tests inside Freelens;
 - the code style rules in AGENTS.md (biome, trunk, import order, no emoji).

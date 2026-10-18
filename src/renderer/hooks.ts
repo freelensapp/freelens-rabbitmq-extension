@@ -1,6 +1,7 @@
-import { Renderer } from "@freelensapp/extensions";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { parseIpcError } from "../common/errors";
+
+import type { Renderer } from "@freelensapp/extensions";
 
 import type { RabbitmqIpcErrorShape } from "../common/ipc";
 
