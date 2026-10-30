@@ -55,7 +55,4 @@ Releases follow the freelensapp organization process, shared by every extension:
    Release. A version with a hyphen goes to the npm `next` dist-tag and its GitHub Release is
    marked as a prerelease, so users installing the package by name keep getting `latest`.
 
-Until Freelens 2.0.0 is released, `main` carries `1.0.0-N` prereleases of the v2 port; `1.0.0`
-is released with Freelens 2.0.0.
-
 Do not push tags by hand and do not publish from a workstation.
