@@ -16,6 +16,8 @@ import {
 } from "../dead-letter";
 import { formatBytes, formatTimestamp, prettyJson } from "../format";
 
+import type { ReactElement } from "react";
+
 import type { ReplayDestination } from "../../common/dead-letter";
 import type {
   MessagesPeekDto,
@@ -58,7 +60,7 @@ function DeathHistory({ death }: { death: DeathInfo }) {
                     {death.original.exchange || "(default exchange)"} · {routingKeysText(death.original.routingKeys)}
                   </code>,
                 ],
-              ] as [string, JSX.Element][])
+              ] as [string, ReactElement][])
             : []),
           ...death.history.map(
             (e) =>
@@ -71,7 +73,7 @@ function DeathHistory({ death }: { death: DeathInfo }) {
                   </code>
                   {e.time !== undefined ? ` · ${formatTimestamp(e.time)}` : ""}
                 </span>,
-              ] as [string, JSX.Element],
+              ] as [string, ReactElement],
           ),
         ]}
       />

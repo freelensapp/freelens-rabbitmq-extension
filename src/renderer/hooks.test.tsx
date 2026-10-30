@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
 
-import { render, unmountComponentAtNode } from "react-dom";
-import { act } from "react-dom/test-utils";
+import { act } from "react";
+import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SelectionStore, useDeferredOpen, useResource, useSelectionParam, useStoredPageParam } from "./hooks";
 
 import type { Renderer } from "@freelensapp/extensions";
+
+import type { ReactNode } from "react";
+import type { Root } from "react-dom/client";
 
 /** Minimal PageParam double: synchronous URL store, like the observable history in practice. */
 function fakeParam(initial = "") {
@@ -20,6 +23,21 @@ function fakeParam(initial = "") {
 }
 
 let container: HTMLDivElement;
+let root: Root | undefined;
+
+/** Renders into the one root of the test container, creating it on first use (React 19 has no legacy `render`). */
+function render(element: ReactNode): void {
+  root ??= createRoot(container);
+  root.render(element);
+}
+
+function unmount(): void {
+  root?.unmount();
+  root = undefined;
+}
+
+// Tells React that the test drives updates through `act`, so it does not warn about them.
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let latest: { value: string; set: (v: string) => void; renders: number };
 
 function Probe({
@@ -41,7 +59,7 @@ beforeEach(() => {
   document.body.append(container);
 });
 afterEach(() => {
-  unmountComponentAtNode(container);
+  act(() => unmount());
   container.remove();
 });
 
@@ -53,17 +71,17 @@ describe("useSelectionParam", () => {
 
   it("survives a full unmount/remount of the page (route re-render) while the URL is empty", () => {
     const { param } = fakeParam();
-    act(() => render(<Probe param={param} tick={0} store={store} />, container));
+    act(() => render(<Probe param={param} tick={0} store={store} />));
     act(() => latest.set("%2F/orders"));
     expect(container.textContent).toBe("open:%2F/orders");
-    act(() => unmountComponentAtNode(container));
-    act(() => render(<Probe param={param} tick={1} store={store} />, container));
+    act(() => unmount());
+    act(() => render(<Probe param={param} tick={1} store={store} />));
     expect(container.textContent).toBe("open:%2F/orders");
   });
 
   it("opens on set, survives a re-render where the URL param reads empty, closes on set('')", () => {
     const { param, store: url } = fakeParam();
-    act(() => render(<Probe param={param} tick={0} store={store} />, container));
+    act(() => render(<Probe param={param} tick={0} store={store} />));
     expect(container.textContent).toBe("closed");
 
     act(() => latest.set("%2F/orders"));
@@ -71,7 +89,7 @@ describe("useSelectionParam", () => {
     expect(url.value).toBe("");
 
     // Background refresh: parent re-renders; URL still has nothing for us.
-    act(() => render(<Probe param={param} tick={1} store={store} />, container));
+    act(() => render(<Probe param={param} tick={1} store={store} />));
     expect(container.textContent).toBe("open:%2F/orders");
 
     act(() => latest.set(""));
@@ -83,11 +101,11 @@ describe("useSelectionParam", () => {
 
   it("adopts a deep link present at mount and a later non-empty URL change; closing clears the URL", () => {
     const { param, store: url } = fakeParam("%2F/deep");
-    act(() => render(<Probe param={param} tick={0} store={store} />, container));
+    act(() => render(<Probe param={param} tick={0} store={store} />));
     expect(container.textContent).toBe("open:%2F/deep");
 
     url.value = "%2F/navigated";
-    act(() => render(<Probe param={param} tick={1} store={store} />, container));
+    act(() => render(<Probe param={param} tick={1} store={store} />));
     expect(container.textContent).toBe("open:%2F/navigated");
 
     act(() => latest.set(""));
@@ -98,10 +116,10 @@ describe("useSelectionParam", () => {
   it("opens even when the URL write is asynchronous or ignored", () => {
     const url = { value: "" };
     const param = { get: () => url.value, set: () => {} } as unknown as Renderer.Navigation.PageParam<string>;
-    act(() => render(<Probe param={param} tick={0} store={store} />, container));
+    act(() => render(<Probe param={param} tick={0} store={store} />));
     act(() => latest.set("%2F/x"));
     expect(container.textContent).toBe("open:%2F/x");
-    act(() => render(<Probe param={param} tick={1} store={store} />, container));
+    act(() => render(<Probe param={param} tick={1} store={store} />));
     expect(container.textContent).toBe("open:%2F/x");
   });
 });
@@ -127,25 +145,25 @@ describe("useStoredPageParam", () => {
   it("keeps the selected target across a sidebar navigation that carries no target (#26)", () => {
     // Clusters page opened target B explicitly: URL carries it.
     const first = fakeParam("b");
-    act(() => render(<StoredProbe param={first.param} store={store} />, container));
+    act(() => render(<StoredProbe param={first.param} store={store} />));
     expect(container.textContent).toBe("b");
     // Sidebar entry: a new page mount whose URL param is empty (page defaults).
-    act(() => unmountComponentAtNode(container));
+    act(() => unmount());
     const second = fakeParam("");
-    act(() => render(<StoredProbe param={second.param} store={store} />, container));
+    act(() => render(<StoredProbe param={second.param} store={store} />));
     expect(container.textContent).toBe("b");
   });
 
   it("selecting a target writes both the URL and the session store; a later deep link wins", () => {
     const { param, store: url } = fakeParam("");
-    act(() => render(<StoredProbe param={param} store={store} />, container));
+    act(() => render(<StoredProbe param={param} store={store} />));
     expect(container.textContent).toBe("none");
     act(() => latestStored.set("a"));
     expect(url.value).toBe("a");
     expect(store.get("target:test")).toBe("a");
-    act(() => unmountComponentAtNode(container));
+    act(() => unmount());
     const deep = fakeParam("c");
-    act(() => render(<StoredProbe param={deep.param} store={store} />, container));
+    act(() => render(<StoredProbe param={deep.param} store={store} />));
     expect(container.textContent).toBe("c");
     expect(store.get("target:test")).toBe("c");
   });
@@ -167,7 +185,7 @@ describe("useResource", () => {
     // Broker statistics lag: the first two reads still report the old count, the third the real one.
     const counts = [5, 5, 0];
     const loader = vi.fn(() => Promise.resolve(counts[Math.min(loader.mock.calls.length - 1, counts.length - 1)]));
-    act(() => render(<ResourceProbe loader={loader} refreshMs={5_000} />, container));
+    act(() => render(<ResourceProbe loader={loader} refreshMs={5_000} />));
     await act(async () => {
       await Promise.resolve();
     });
@@ -193,7 +211,7 @@ describe("useResource", () => {
       .fn<() => Promise<number>>()
       .mockResolvedValueOnce(5)
       .mockImplementationOnce(() => new Promise((r) => (resolveSecond = r)));
-    act(() => render(<ResourceProbe loader={loader} refreshMs={5_000} />, container));
+    act(() => render(<ResourceProbe loader={loader} refreshMs={5_000} />));
     await act(async () => {
       await Promise.resolve();
     });
@@ -213,16 +231,16 @@ describe("useDeferredOpen", () => {
   it("opens one tick after the flag flips, closes immediately", () => {
     vi.useFakeTimers();
     try {
-      act(() => render(<OpenProbe open={false} />, container));
+      act(() => render(<OpenProbe open={false} />));
       expect(container.textContent).toBe("closed");
-      act(() => render(<OpenProbe open={true} />, container));
+      act(() => render(<OpenProbe open={true} />));
       // Still closed within the same tick: the opening click can bubble to window harmlessly.
       expect(container.textContent).toBe("closed");
       act(() => {
         vi.runAllTimers();
       });
       expect(container.textContent).toBe("open");
-      act(() => render(<OpenProbe open={false} />, container));
+      act(() => render(<OpenProbe open={false} />));
       expect(container.textContent).toBe("closed");
     } finally {
       vi.useRealTimers();

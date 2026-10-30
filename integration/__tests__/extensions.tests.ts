@@ -4,10 +4,10 @@
  * Licensed under MIT License. See LICENSE in root directory for more information.
  */
 
-// Runs inside the Freelens repository (copied there by integration-tests.yaml),
-// so the helpers come from freelens/integration/helpers.
+// Runs inside a Freelens checkout, copied into `freelens/integration/__tests__/`
+// by the integration tests workflow, and imports the helpers found there.
 
-import { afterAll, beforeAll, describe, expect, it } from "@jest/globals";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { kindReady } from "../helpers/kind";
 import * as utils from "../helpers/utils";
 
@@ -103,22 +103,18 @@ async function installExtension(app: ElectronApplication, window: Page): Promise
       ?.click();
   });
 
-  const textbox = window.getByPlaceholder("Name or file path or URL");
+  // The packed tarball from the workflow, or the published package when the test runs without one.
   console.log("await textbox.fill");
-  await textbox.fill(process.env.EXTENSION_PATH || EXTENSION_NAME);
-  const installButtonSelector = 'button[class*="Button install-module__button--"]';
-  console.log("await window.click [data-waiting=false]");
-  await window.click(installButtonSelector.concat("[data-waiting=false]"));
+  await window
+    .getByPlaceholder("Name, URL, or path to a package or directory")
+    .fill(process.env.EXTENSION_PATH || EXTENSION_NAME);
+  console.log("await install button click");
+  await window.getByRole("button", { name: "Install", exact: true }).click();
 
-  console.log('await window.waitForSelector div[class*="installed-extensions-module__extensionName--"]');
-  const installedExtensionName = await (
-    await window.waitForSelector('div[class*="installed-extensions-module__extensionName--"]', { timeout: 120_000 })
-  ).textContent();
-  expect(installedExtensionName).toBe(EXTENSION_NAME);
-  const installedExtensionState = await (
-    await window.waitForSelector('div[class*="installed-extensions-module__enabled--"]', { timeout: 120_000 })
-  ).textContent();
-  expect(installedExtensionState).toBe("Enabled");
+  // Listed and enabled. The status column reads "Incompatible" if the host refuses `engines.freelens`.
+  console.log("await extensions table row");
+  const row = window.getByTestId("extensions-table").locator("tbody tr", { hasText: EXTENSION_NAME });
+  await row.locator("td").nth(2).getByText("Enabled", { exact: true }).waitFor({ timeout: 120_000 });
 
   // Dismiss notifications so one still in its enter animation does not
   // intercept pointer events on the elements behind it.
@@ -171,7 +167,7 @@ describe("extensions page tests", () => {
 
 // The cluster tests need a kind cluster with the fixture from
 // integration/fixtures/rabbitmq applied (integration-tests.yaml does both).
-const clusterDescribe = kindReady(TEST_KIND_CLUSTER_NAME, TEST_NAMESPACE) ? describe : describe.skip;
+const clusterDescribe = describe.skipIf(!kindReady(TEST_KIND_CLUSTER_NAME, TEST_NAMESPACE));
 
 async function launchKindClusterFromCatalog(window: Page): Promise<Frame> {
   const catalogList = window.locator('[data-testid^="catalog-list-for-"]');
@@ -184,14 +180,15 @@ async function launchKindClusterFromCatalog(window: Page): Promise<Frame> {
   return utils.launchKindClusterFromCatalog(TEST_KIND_CLUSTER_NAME, window);
 }
 
-// Freelens 1.10.3, the version the workflow builds, has no clickSidebarItem
-// helper: open the RabbitMQ group first when the child entry is collapsed.
+// Opens the RabbitMQ group first when the child entry is collapsed. The click
+// is dispatched on the link, as clickSidebarItem does: a re-laying-out cluster
+// overview can cover the click point right after the cluster connects.
 async function openRabbitmqMenuItem(frame: Frame, menuId: string): Promise<void> {
-  const item = frame.locator(`[data-testid="link-for-sidebar-item-${EXTENSION_ID}-${menuId}"]`);
-  if (!(await item.isVisible())) {
-    await frame.click(`[data-testid="link-for-sidebar-item-${EXTENSION_ID}-rabbitmq"]`);
+  const testId = `link-for-sidebar-item-${EXTENSION_ID}-${menuId}`;
+  if (!(await frame.locator(`[data-testid="${testId}"]`).isVisible())) {
+    await utils.clickSidebarItem(frame, `link-for-sidebar-item-${EXTENSION_ID}-rabbitmq`);
   }
-  await item.click();
+  await utils.clickSidebarItem(frame, testId);
 }
 
 clusterDescribe("RabbitMQ cluster pages", () => {
@@ -232,7 +229,7 @@ clusterDescribe("RabbitMQ cluster pages", () => {
 
       const card = frame.locator(".RmqClusterCard", { hasText: FIXTURE_TARGET });
       await card.waitFor({ state: "visible", timeout: 120_000 });
-      // jest expect, not the Playwright one: read the values and assert on them.
+      // Vitest's expect, not the Playwright one: read the values and assert on them.
       expect((await card.locator(".RmqClusterName").textContent())?.trim()).toBe(FIXTURE_TARGET);
       // Credentials are resolved from the Secret referenced by the StatefulSet env.
       expect(await card.textContent()).toContain("Secret rabbitmq-e2e-auth");

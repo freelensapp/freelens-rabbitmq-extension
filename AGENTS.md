@@ -12,17 +12,24 @@ RabbitMQ brokers in the connected Kubernetes cluster (RabbitMQ Cluster Operator
 Management API), opens a port-forward from the Freelens main process and renders
 overview, queues, exchanges, connections and messages through the Management API.
 
-- **Language**: TypeScript 5.x
-- **Runtime**: Node.js >= 22.0.0, Freelens >= 1.8.0
-- **Package manager**: pnpm 10.x (locked)
+- **Language**: TypeScript 7.x
+- **Runtime**: Freelens >= 2.0.0 (extension API v2)
+- **Toolchain**: Node.js 24.x (`mise.toml` with `mise.lock`; Node also in `.nvmrc`)
+- **Package manager**: pnpm 12.x (`packageManager`, run through corepack)
 - **License**: MIT
 - **npm package**: `@freelensapp/rabbitmq-extension`
+
+The build, type-check, test and lint setup follows the reference template,
+[freelens-example-extension](https://github.com/freelensapp/freelens-example-extension),
+whose `AGENTS.md` gives the reason for each setting ("Build", "TypeScript",
+"Lint and CI", "Rules That Fail Silently"). Library and tool versions follow
+the Freelens stack, and `@freelensapp/extensions` is pinned to one exact version.
 
 ## Common Commands
 
 ```bash
 # Type checking
-pnpm type:check
+pnpm type:check           # main, renderer, tests, tooling and environment tests, one program each
 
 # Linting & formatting
 pnpm biome:check          # TypeScript/TSX, JS, JSON, CSS/SCSS (biome)
@@ -31,7 +38,7 @@ pnpm trunk:check          # Markdown, YAML, TOML, and other formats not covered 
 pnpm trunk:fix            # Auto-fix Markdown, YAML, etc.
 pnpm lint:check           # Alias for biome:check
 pnpm lint:fix             # Alias for biome:fix
-pnpm knip:check           # Unused files, exports and dependencies
+pnpm knip:check           # Unused files and dependencies
 
 # Tests
 pnpm test:unit            # vitest, colocated *.test.ts(x)
@@ -39,17 +46,17 @@ pnpm rabbitmq:up && pnpm itest && pnpm rabbitmq:down
                           # engine e2e against a real broker in Docker (no Kubernetes)
 
 # Build
-pnpm build                # Type check + electron-vite + Main bundle smoke test
-pnpm build:production     # Production build (no preserveModules)
-pnpm smoke:main           # Load the built Main bundle with host globals stubbed
+pnpm build                # Both Vite runs (renderer, main) + Main bundle smoke test, without the type check
+pnpm dev                  # Both Vite runs in watch mode, for a directory install
+pnpm smoke:main           # Import the built Main bundle with the host API stubbed
 
 # Pack for testing
 pnpm pack:dev             # Bump prerelease version, build, and create .tgz for install in Freelens app
 
 # Clean
-pnpm clean                # Clean out/
+pnpm clean                # Clean dist/
 pnpm clean:dts            # Remove generated *.d.scss.ts files
-pnpm clean:all            # Clean everything (dts, node_modules, out, tgz)
+pnpm clean:all            # Clean everything (dist, dts, node_modules, tgz)
 ```
 
 ## Architecture
@@ -65,23 +72,29 @@ src/
   main/rabbitmq/           # Engine: discovery, credentials, pod resolver, port-forward,
                            # management client, http, normalize, session manager
   main/catalog-kube-reader.ts   # Kubernetes reads through Main.K8s (the only read seam)
-  main/kubeconfig-resolver.ts   # Finds the user's kubeconfig for the port-forward
+  main/active-cluster.ts   # The cluster to use when a request names none
   renderer/index.tsx       # Renderer entry point: cluster pages and sidebar menus
   renderer/pages/          # Clusters, Overview, Queues, Exchanges, Connections, details
   renderer/components/     # Page shell, target selector, resizable columns, errors
   renderer/ipc-client.ts   # The only way the renderer talks to Main
   renderer/write-mode-store.ts  # Session-scoped, unpersisted Write Mode flag
+  renderer/styles.scss     # The extension's stylesheet, emitted as dist/renderer.css
+test/freelens-extensions.ts  # Runtime stub of @freelensapp/extensions for Vitest
 test/e2e/                  # Docker broker fixture and engine e2e script
+environment-tests/         # Probes for the per-environment TypeScript programs
+build/                     # Vite plugins from the template: host modules, standard decorators, CSS module declarations
 integration/               # Playwright tests and kind fixture run inside Freelens by CI
 ```
 
-Build output goes to `out/`.
+Build output goes to `dist/`: `main.js`, `renderer.js` and `renderer.css`, with
+source maps, all ES modules.
 
 ### Engine rules
 
-- `KubeReader` (`catalog-kube-reader.ts`) is the only Kubernetes read seam; the
-  `Forwarder` (`kube-forwarder.ts`, `@kubernetes/client-node` PortForward) is the only
-  write-ish seam. Do not add other Kubernetes clients.
+- `KubeReader` (`catalog-kube-reader.ts`, `Main.K8s`) is the only Kubernetes read seam;
+  the tunnel opener (`port-forward.ts`, `kubectl port-forward` run with
+  `Main.Shell.getKubectlPath`/`getEnvironment`) is the only write-ish seam. Both go
+  through the Freelens proxy. Do not add other Kubernetes clients or bundle one.
 - The Management API is reached only through the port-forward tunnel on `127.0.0.1`,
   with Node core `http`/`https`. No heavy HTTP clients.
 - Sessions are keyed by `(clusterId, targetId)`, idle-closed after 5 minutes.
@@ -107,18 +120,30 @@ Build output goes to `out/`.
   logged. Error messages must not include them.
 - TLS to the Management API is verified when a CA Secret is available; keep it that way.
 
-## Key Dependencies (provided by Freelens host at runtime)
+## Key Dependencies
 
-These are NOT bundled, they come from the Freelens host as globals:
-- `@freelensapp/extensions` → `global.LensExtensions`
-- `mobx` → `global.Mobx`
-- `react` → `global.React`
-- `react-dom` → `global.ReactDom`
-- `mobx-react` → `global.MobxReact`
-- `react-router-dom` → `global.ReactRouterDom`
+Freelens v2 installs no dependencies of an extension, so everything the code
+needs at runtime is bundled, except the modules the host provides on
+`globalThis.FreelensExtensionApi`: `react`, `react-dom`, `react/jsx-runtime`
+(renderer), `mobx` (both) and `mobx-react` (renderer).
+`build/vite-plugin-host-modules.mjs` maps their bare imports onto that global;
+they are devDependencies, pinned to the host's versions, for types and tests
+only. `@freelensapp/extensions` is a three-line shim over the same global and
+is bundled.
 
-Other dependencies ARE bundled into the extension output (`@kubernetes/client-node` is
-bundled into the Main bundle).
+- There are no runtime dependencies: Kubernetes is reached through the host
+  (`Main.K8s` for reads, the host's kubectl for the port-forward), and the
+  Management API through Node core `http`/`https`. `pnpm smoke:main` loads
+  `dist/main.js` at the end of `pnpm build` and fails it if the bundle throws
+  at load.
+- The renderer gets no Node or Electron: the build fails on such an import,
+  and `pnpm type:check` on a Node global (`Buffer`, `process`).
+- The stylesheet is imported for its side effect (`import "./styles.scss"`)
+  and reaches the page as `dist/renderer.css`, which the host links. Do not
+  inject `<style>` tags.
+- Every cluster page is wrapped by `withPageErrorBoundary`
+  (`src/renderer/components/error-boundary.tsx`), and gets the extension's
+  dependencies from its registration: the host passes `params` only.
 
 ## Code Style
 
@@ -161,9 +186,9 @@ Code in `src/common/` is shared between both processes. The renderer never talks
 
 ## Testing
 
-- **Unit** (`pnpm test:unit`): vitest, fakes for `KubeReader`, `JsonHttpClient` and a TCP-pipe `Forwarder`. Every engine change ships with unit tests, including the failure and disarmed paths.
+- **Unit** (`pnpm test:unit`): vitest, fakes for `KubeReader`, `JsonHttpClient` and a fake-spawn kubectl for the tunnel opener. Every engine change ships with unit tests, including the failure and disarmed paths.
 - **Engine e2e** (`pnpm rabbitmq:up && pnpm itest && pnpm rabbitmq:down`): the real HTTP client and normalisers against a Docker broker (`test/e2e/docker-compose.yml`).
-- **Bundle smoke** (`pnpm smoke:main`, part of `pnpm build`): loads the built Main bundle with host globals stubbed.
+- **Bundle smoke** (`pnpm smoke:main`, part of `pnpm build`): imports the built Main bundle with the host API stubbed.
 - **Integration inside Freelens** (`integration/__tests__/`): Playwright tests run by CI inside a packaged Freelens on a kind cluster, with the disposable broker from `integration/fixtures/rabbitmq/`. They install the packed extension and check the RabbitMQ pages against the fixture.
 
 Run unit tests, type check, lint and the engine e2e before opening a pull request. For UI changes, verify in Freelens with `pnpm pack:dev` and attach a screenshot.
@@ -172,8 +197,8 @@ Run unit tests, type check, lint and the engine e2e before opening a pull reques
 
 ### Changes Not Appearing
 
-1. Check that files are not in ignored output directories (`out/`, `dist/`, `node_modules/`)
-2. Full clean and rebuild: `pnpm clean:all && pnpm build`
+1. Check that files are not in ignored output directories (`dist/`, `node_modules/`)
+2. Full clean and rebuild: `pnpm clean:all && pnpm install && pnpm build`
 3. Reinstall the extension in Freelens (or restart the app in dev mode)
 
 ### Build Failures
@@ -189,7 +214,7 @@ Run unit tests, type check, lint and the engine e2e before opening a pull reques
 2. Check the terminal where Freelens was launched for main process errors
 3. Look for stack traces with file:line numbers
 4. `Management API unreachable through the tunnel`: the port-forward pod is not Ready or the Management plugin is not enabled on the broker
-5. Validate both with `pnpm type:check` **and** `pnpm build` — runtime failures can appear only in bundled `out/` code
+5. Validate both with `pnpm type:check` **and** `pnpm build` — runtime failures can appear only in bundled `dist/` code
 
 ## Best Practices
 

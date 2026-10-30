@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Changed
+
+- **Requires Freelens 2.0.0.** Ported to the Freelens v2 extension API: `engines.freelens` is `^2.0.0`, the extension is built as ES modules (`dist/main.js`, `dist/renderer.js`, `dist/renderer.css`) with the build, type-check, test and lint setup of freelens-example-extension, against React 19 and `@freelensapp/extensions` 2.0.0. The stylesheet ships as `renderer.css` instead of being injected at runtime, and every page renders inside an error boundary. Freelens 1.x keeps working with 0.4.x. Because of that this is a major version, 1.0.0, released with Freelens 2.0.0; builds published before then are `1.0.0-*` prereleases under the npm `next` dist-tag, so installing the package by name from Freelens 1.x still gets 0.4.x.
+- The port-forward to the Management API runs Freelens's own kubectl (`kubectl port-forward` through the Freelens proxy, like Freelens's port-forwards) instead of a bundled `@kubernetes/client-node`, so it follows the cluster's proxy settings and the kubectl Freelens picks for the cluster. `@kubernetes/client-node` is gone, and `dist/main.js` shrinks from several MB to about 64 kB. It needs the same `pods/portforward` permission as before.
+
 ### Added
 
 - **Replay dead letters** from the Message Inspector (Write Mode): select dead-lettered messages and publish copies either back to the queue they first failed in (default; through the default exchange, so only the consumer that failed them receives them again) or to their original exchange and routing key (every queue bound there receives a copy). The originals stay in the dead-letter queue, so nothing can be lost; replaying twice publishes duplicates. The destination is computed in the Main process from each message's own `x-death` headers, truncated payloads are refused, broker-managed headers (`x-death`, `x-first-death-*`, `x-last-death-*`, delivery counts) are removed, and CC/BCC are removed when sending back to the failed queue. A confirmation lists where each message goes, and the result reports routed, unroutable, skipped and failed messages one by one.

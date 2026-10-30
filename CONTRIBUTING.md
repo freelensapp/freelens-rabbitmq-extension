@@ -7,7 +7,8 @@ Thanks for helping improve the Freelens RabbitMQ extension.
 ```sh
 pnpm install
 pnpm type:check && pnpm lint:check && pnpm knip:check && pnpm test:unit
-pnpm pack            # builds and writes the .tgz to install in Freelens (Extensions → path to .tgz)
+pnpm build && pnpm pack   # `pnpm pack` does not build: build first, then write the .tgz to install in Freelens
+pnpm pack:dev             # or both at once, with a throwaway prerelease version so Freelens reinstalls it
 ```
 
 Run the engine against a real broker without Kubernetes:
@@ -43,13 +44,18 @@ pnpm rabbitmq:up && pnpm itest && pnpm rabbitmq:down
 Releases follow the freelensapp organization process, shared by every extension:
 
 1. A maintainer runs the **Automated npm version** workflow (`npm-version.yaml`) choosing
-   `patch`, `minor` or `major`. It opens a pull request that bumps `version` in `package.json`.
+   `patch`, `minor`, `major` or `prerelease`. It opens a pull request that bumps `version` in
+   `package.json`.
 2. The pull request is reviewed and merged.
 3. A maintainer comments `/tag` on the merged pull request: the **Automated tag** workflow
-   (`tag.yaml`) creates and pushes the `vX.Y.Z` tag.
+   (`tag.yaml`) creates and pushes the `vX.Y.Z` tag, prerelease versions (`vX.Y.Z-N`) included.
 4. The **Release** workflow (`release.yaml`) builds the extension, publishes
    `@freelensapp/rabbitmq-extension` to npm (Trusted Publishing with provenance, with
    `NPM_TOKEN` as fallback) and attaches the `.tgz`, its checksum and the SBOM to a GitHub
-   Release.
+   Release. A version with a hyphen goes to the npm `next` dist-tag and its GitHub Release is
+   marked as a prerelease, so users installing the package by name keep getting `latest`.
+
+Until Freelens 2.0.0 is released, `main` carries `1.0.0-N` prereleases of the v2 port; `1.0.0`
+is released with Freelens 2.0.0.
 
 Do not push tags by hand and do not publish from a workstation.

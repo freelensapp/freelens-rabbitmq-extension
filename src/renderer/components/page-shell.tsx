@@ -1,24 +1,11 @@
 import { Renderer } from "@freelensapp/extensions";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { EXTENSION_VERSION } from "../../common/version";
-import styles from "../styles.scss?inline";
 
 import type { ReactNode } from "react";
 
 import type { DiscoveredRabbitmqInfo, RabbitmqIpcErrorShape } from "../../common/ipc";
 import type { WriteModeStore } from "../write-mode-store";
-
-const STYLE_ID = "freelens-rabbitmq-extension-styles";
-
-function ensureStyles(): void {
-  let style = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
-  if (!style) {
-    style = document.createElement("style");
-    style.id = STYLE_ID;
-    document.head.append(style);
-  }
-  if (style.textContent !== styles) style.textContent = styles;
-}
 
 // ---------------------------------------------------------------------------
 
@@ -33,7 +20,6 @@ export function PageShell({
   actions?: ReactNode;
   children: ReactNode;
 }) {
-  useEffect(() => ensureStyles(), []);
   return (
     <div className="RmqPage">
       <header className="RmqHeader">
@@ -270,7 +256,7 @@ function errorTitle(error: RabbitmqIpcErrorShape): string {
   }
 }
 
-function errorHint(error: RabbitmqIpcErrorShape): string | undefined {
+export function errorHint(error: RabbitmqIpcErrorShape): string | undefined {
   switch (error.code) {
     case "unauthorized":
     case "no-credentials":
@@ -278,6 +264,10 @@ function errorHint(error: RabbitmqIpcErrorShape): string | undefined {
     case "forbidden":
       return "The user lacks a management tag (monitoring/management/administrator) or vhost permission.";
     case "unreachable":
+      // kubectl's own explanation is in the message; a denied port-forward is a Kubernetes permission, not the plugin.
+      if (/\bforbidden\b|cannot create resource "pods\/portforward"/i.test(error.message)) {
+        return "Your Kubernetes user may not port-forward to pods in this namespace: it needs the create verb on pods/portforward.";
+      }
       return "The port-forward could not reach the pod. Is the management plugin enabled on port 15672?";
     case "no-pod":
       return "Wait for a broker pod to become Ready, or check the label selector used for discovery.";
