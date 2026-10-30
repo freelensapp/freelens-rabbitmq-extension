@@ -23,7 +23,7 @@ The build, type-check, test and lint setup follows the reference template,
 [freelens-example-extension](https://github.com/freelensapp/freelens-example-extension),
 whose `AGENTS.md` gives the reason for each setting ("Build", "TypeScript",
 "Lint and CI", "Rules That Fail Silently"). Library and tool versions follow
-the Freelens stack, and `@freelensapp/extensions` is pinned to one nightly.
+the Freelens stack, and `@freelensapp/extensions` is pinned to one exact version.
 
 ## Common Commands
 

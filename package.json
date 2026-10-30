@@ -69,7 +69,7 @@
     "itest": "node --import tsx test/e2e/integration.local.ts"
   },
   "devDependencies": {
-    "@freelensapp/extensions": "2.0.0-0-nightly-2026-10-12",
+    "@freelensapp/extensions": "2.0.0",
     "@testing-library/dom": "10.4.2",
     "@testing-library/react": "16.3.3",
     "@types/node": "24.19.1",
@@ -79,8 +79,8 @@
     "electron": "43.7.9",
     "esbuild": "0.28.2",
     "jsdom": "30.1.1",
-    "react": "19.3.0",
-    "react-dom": "19.3.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
     "sass-embedded": "1.105.1",
     "tsx": "4.23.15",
     "typescript": "7.0.2",
